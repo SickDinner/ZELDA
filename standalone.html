@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Standalone Test - No Dev Server</title>
+  <style>
+    body { 
+      background: #222; 
+      display: flex; 
+      flex-direction: column;
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      font-family: monospace; 
+      color: white;
+    }
+    #game-canvas { 
+      border: 3px solid #ff0000; 
+      background: #000; 
+      margin: 10px;
+    }
+    .status {
+      margin: 5px;
+      padding: 10px;
+      background: #333;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="status">🔥 STANDALONE MODE - NO DEV SERVER 🔥</div>
+  <div class="status" id="test-status">Testing canvas rendering...</div>
+  <canvas id="game-canvas" width="800" height="600"></canvas>
+  <div class="status">Red border = Canvas element found</div>
+  <div class="status">If canvas is black, there's a rendering issue</div>
+  
+  <script>
+    console.log('🔥 Standalone test - no TypeScript, no modules, no dev server');
+    
+    // Test 1: Verify canvas exists
+    const canvas = document.getElementById('game-canvas');
+    const statusEl = document.getElementById('test-status');
+    
+    if (!canvas) {
+      console.error('❌ CRITICAL: Canvas element not found');
+      statusEl.textContent = '❌ Canvas element not found in DOM';
+      statusEl.style.color = '#ff0000';
+    } else {
+      console.log('✅ Canvas element found:', canvas);
+      console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
+      
+      // Test 2: Get 2D context
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error('❌ CRITICAL: Canvas 2D context failed');
+        statusEl.textContent = '❌ Canvas 2D context not available';
+        statusEl.style.color = '#ff0000';
+      } else {
+        console.log('✅ 2D context obtained');
+        
+        // Test 3: Basic rendering
+        try {
+          console.log('🎨 Attempting to render...');
+          
+          // Fill entire canvas with bright green
+          ctx.fillStyle = '#00ff00';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          console.log('Step 1: Green background filled');
+          
+          // Draw bright red rectangle
+          ctx.fillStyle = '#ff0000';
+          ctx.fillRect(50, 50, 200, 100);
+          console.log('Step 2: Red rectangle drawn');
+          
+          // Draw white text
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 24px monospace';
+          ctx.fillText('STANDALONE TEST', 100, 200);
+          console.log('Step 3: White text drawn');
+          
+          // Draw blue circle
+          ctx.fillStyle = '#0000ff';
+          ctx.beginPath();
+          ctx.arc(400, 300, 50, 0, Math.PI * 2);
+          ctx.fill();
+          console.log('Step 4: Blue circle drawn');
+          
+          statusEl.textContent = '✅ RENDERING SUCCESSFUL!';
+          statusEl.style.color = '#00ff00';
+          
+          console.log('✅ All rendering steps completed successfully');
+          
+          // Test 4: Animation
+          let frame = 0;
+          function animate() {
+            // Animated yellow square
+            const x = 600 + Math.sin(Date.now() / 1000) * 50;
+            const y = 400 + Math.cos(Date.now() / 1000) * 30;
+            
+            // Clear area for animation
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(550, 350, 150, 100);
+            
+            // Draw animated square
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(x - 25, y - 25, 50, 50);
+            
+            // Frame counter
+            ctx.fillStyle = '#000000';
+            ctx.font = '14px monospace';
+            ctx.fillText('Frame: ' + (frame++), 20, canvas.height - 20);
+            
+            requestAnimationFrame(animate);
+          }
+          
+          animate();
+          console.log('✅ Animation loop started');
+          
+        } catch (error) {
+          console.error('❌ RENDERING FAILED:', error);
+          statusEl.textContent = '❌ Rendering failed: ' + error.message;
+          statusEl.style.color = '#ff0000';
+        }
+      }
+    }
+    
+    // Test 5: DOM inspection
+    setTimeout(() => {
+      console.log('🔍 DOM inspection:');
+      console.log('- Document title:', document.title);
+      console.log('- Canvas in DOM:', !!document.getElementById('game-canvas'));
+      console.log('- Canvas computed style:', window.getComputedStyle(canvas || document.body));
+    }, 1000);
+  </script>
+</body>
+</html>

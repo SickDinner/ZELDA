@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Test</title>
+  <style>
+    body { 
+      background: #222; 
+      color: white; 
+      font-family: monospace; 
+      padding: 20px;
+    }
+    #debug-canvas { 
+      border: 2px solid #666; 
+      background: #000; 
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Debug Test - SNES JRPG Framework</h1>
+  <p>If you see this text, HTML is loading correctly.</p>
+  <canvas id="debug-canvas" width="400" height="300"></canvas>
+  <div id="status">Testing...</div>
+  
+  <script>
+    console.log('🧪 Debug test starting...');
+    
+    // Test 1: Basic canvas rendering
+    const canvas = document.getElementById('debug-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    if (ctx) {
+      console.log('✅ Canvas context created successfully');
+      
+      // Draw a test pattern
+      ctx.fillStyle = '#0066ff';
+      ctx.fillRect(50, 50, 100, 100);
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '16px monospace';
+      ctx.fillText('Canvas Test', 60, 120);
+      
+      ctx.fillStyle = '#ff6600';
+      ctx.fillRect(200, 100, 80, 80);
+      
+      document.getElementById('status').textContent = '✅ Canvas rendering works!';
+    } else {
+      console.error('❌ Failed to get canvas context');
+      document.getElementById('status').textContent = '❌ Canvas context failed';
+    }
+    
+    // Test 2: Try loading the main script
+    setTimeout(() => {
+      console.log('🔍 Checking for main script errors...');
+      
+      // Add error listener for script loading
+      window.addEventListener('error', (event) => {
+        console.error('🚨 Script error:', event.error);
+        document.getElementById('status').innerHTML += '<br>❌ Script error detected - check console';
+      });
+      
+      // Test module loading
+      import('/src/main.ts').then(() => {
+        console.log('✅ Main script loaded successfully');
+        document.getElementById('status').innerHTML += '<br>✅ Main script loads';
+      }).catch((error) => {
+        console.error('❌ Main script failed to load:', error);
+        document.getElementById('status').innerHTML += '<br>❌ Main script failed: ' + error.message;
+      });
+    }, 1000);
+  </script>
+</body>
+</html>

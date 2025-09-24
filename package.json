@@ -1,0 +1,36 @@
+{
+  "name": "snes-jrpg-framework",
+  "version": "1.0.0",
+  "description": "A modular, data-driven SNES-style 2D JRPG framework",
+  "type": "module",
+  "main": "src/main.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "lint": "eslint src --ext ts",
+    "format": "prettier --write src"
+  },
+  "keywords": ["jrpg", "game-engine", "typescript", "canvas", "ecs"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vitest/ui": "^1.0.4",
+    "eslint": "^8.54.0",
+    "prettier": "^3.1.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.4"
+  },
+  "dependencies": {
+    "howler": "^2.2.4"
+  },
+  "optionalDependencies": {
+    "@types/howler": "^2.2.11"
+  }
+}

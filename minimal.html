@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimal JRPG Test</title>
+  <style>
+    body { 
+      background: #222; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      font-family: monospace; 
+    }
+    #game-canvas { 
+      border: 2px solid #666; 
+      background: #000; 
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game-canvas" width="800" height="600"></canvas>
+  
+  <script>
+    console.log('🎮 Minimal JRPG test starting...');
+    
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) {
+      console.error('❌ Failed to get canvas context');
+      alert('Canvas not supported!');
+    } else {
+      console.log('✅ Canvas ready');
+      
+      // Minimal rendering test
+      function render() {
+        // Clear with dark background
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw grid pattern
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        
+        const gridSize = 32;
+        for (let x = 0; x < canvas.width; x += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvas.height);
+          ctx.stroke();
+        }
+        
+        for (let y = 0; y < canvas.height; y += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        }
+        
+        // Draw a test sprite (blue square)
+        ctx.fillStyle = '#4499ff';
+        ctx.fillRect(300, 250, 32, 32);
+        
+        // Draw text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px monospace';
+        ctx.fillText('SNES JRPG Framework - Minimal Test', 50, 50);
+        ctx.fillText('If you see this, rendering works!', 50, 80);
+        ctx.fillText('Blue square = player sprite', 50, 110);
+      }
+      
+      // Initial render
+      render();
+      
+      // Animation loop test
+      let frame = 0;
+      function animate() {
+        render();
+        
+        // Animate the blue square
+        const time = Date.now() / 1000;
+        const x = 300 + Math.sin(time) * 50;
+        const y = 250 + Math.cos(time) * 30;
+        
+        ctx.fillStyle = '#44ff99';
+        ctx.fillRect(x, y, 32, 32);
+        
+        // Frame counter
+        ctx.fillStyle = '#ffff00';
+        ctx.font = '12px monospace';
+        ctx.fillText(`Frame: ${frame++}`, 50, canvas.height - 20);
+        
+        requestAnimationFrame(animate);
+      }
+      
+      animate();
+      console.log('✅ Animation loop started');
+    }
+  </script>
+</body>
+</html>

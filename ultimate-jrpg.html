@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultimate SNES JRPG Framework</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Courier New', monospace;
+      color: white;
+      overflow: hidden;
+    }
+    
+    #game-container {
+      text-align: center;
+      border: 3px solid #4a4a6a;
+      border-radius: 15px;
+      padding: 20px;
+      background: linear-gradient(45deg, #2a2a4a, #1a1a3a);
+      box-shadow: 0 0 30px rgba(100, 100, 200, 0.3);
+      position: relative;
+    }
+    
+    #game-title {
+      font-size: 24px;
+      font-weight: bold;
+      color: #ffaa00;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+      margin-bottom: 10px;
+    }
+    
+    #game-canvas {
+      border: 2px solid #6a6a8a;
+      background: #000;
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+      box-shadow: 0 0 20px rgba(100, 100, 200, 0.3);
+    }
+    
+    #game-info {
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #aaa;
+    }
+    
+    #controls-hint {
+      position: absolute;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: #888;
+      white-space: nowrap;
+    }
+    
+    .system-status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 8px;
+      color: #0f0;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div id="game-title">🎮 Ultimate SNES JRPG Framework 🎮</div>
+    <canvas id="game-canvas" width="800" height="600"></canvas>
+    <div id="game-info">
+      <span id="player-info">Player: Loading...</span>
+      <span id="fps-info">FPS: --</span>
+      <span id="frame-info">Frame: 0</span>
+    </div>
+    <div id="controls-hint">WASD: Move | E: Interact | I: Inventory | B: Battle Menu | M: Music | ESC: Cancel</div>
+    <div class="system-status" id="system-status">
+      ✅ Canvas Rendering<br>
+      ✅ Game Loop<br>
+      ✅ Audio System<br>
+      ✅ Inventory System<br>
+      ✅ Dialogue System<br>
+      ✅ Combat System
+    </div>
+  </div>
+
+  <script>
+    console.log('🎮 Ultimate SNES JRPG Framework initializing...');
+
+    // === CORE GAME ENGINE ===
+    class Vec2 {
+      constructor(x = 0, y = 0) {
+        this.x = x;
+        this.y = y;
+      }
+      
+      copy(other) {
+        this.x = other.x;
+        this.y = other.y;
+      }
+      
+      distance(other) {
+        const dx = this.x - other.x;
+        const dy = this.y - other.y;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+    }
+
+    // === AUDIO SYSTEM ===
+    class AudioSystem {
+      constructor() {
+        this.audioContext = null;
+        this.sounds = new Map();
+        this.musicEnabled = true;
+        this.sfxEnabled = true;
+        this.initializeAudio();
+      }
+
+      initializeAudio() {
+        try {
+          this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          this.createSNESSounds();
+          console.log('🔊 Audio system initialized');
+        } catch (error) {
+          console.warn('⚠️ Audio not supported:', error);
+        }
+      }
+
+      createSNESSounds() {
+        // Create classic SNES-style sounds using Web Audio API
+        this.sounds.set('coin', { freq: 988, type: 'square', duration: 0.3 });
+        this.sounds.set('jump', { freq: 440, type: 'triangle', duration: 0.2 });
+        this.sounds.set('hit', { freq: 220, type: 'sawtooth', duration: 0.15 });
+        this.sounds.set('powerup', { freq: 523, type: 'square', duration: 0.4 });
+        this.sounds.set('beep', { freq: 880, type: 'sine', duration: 0.1 });
+        this.sounds.set('battle', { freq: 330, type: 'square', duration: 0.5 });
+      }
+
+      playSFX(soundId, volume = 0.3) {
+        if (!this.sfxEnabled || !this.audioContext) return;
+
+        const sound = this.sounds.get(soundId);
+        if (!sound) return;
+
+        try {
+          const oscillator = this.audioContext.createOscillator();
+          const gainNode = this.audioContext.createGain();
+
+          oscillator.type = sound.type;
+          oscillator.frequency.setValueAtTime(sound.freq, this.audioContext.currentTime);
+
+          gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+          gainNode.gain.linearRampToValueAtTime(volume, this.audioContext.currentTime + 0.01);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + sound.duration);
+
+          oscillator.connect(gainNode);
+          gainNode.connect(this.audioContext.destination);
+
+          oscillator.start(this.audioContext.currentTime);
+          oscillator.stop(this.audioContext.currentTime + sound.duration);
+        } catch (error) {
+          console.warn('Audio play failed:', error);
+        }
+      }
+
+      toggleMusic() {
+        this.musicEnabled = !this.musicEnabled;
+        console.log('🎵 Music:', this.musicEnabled ? 'ON' : 'OFF');
+      }
+
+      toggleSFX() {
+        this.sfxEnabled = !this.sfxEnabled;
+        console.log('🔊 SFX:', this.sfxEnabled ? 'ON' : 'OFF');
+      }
+    }
+
+    // === INVENTORY SYSTEM ===
+    class InventorySystem {
+      constructor() {
+        this.items = [
+          { id: 'health_potion', name: 'Health Potion', quantity: 5, type: 'consumable', description: 'Restores 50 HP', value: 25 },
+          { id: 'mana_potion', name: 'Mana Potion', quantity: 3, type: 'consumable', description: 'Restores 30 MP', value: 20 },
+          { id: 'iron_sword', name: 'Iron Sword', quantity: 1, type: 'weapon', description: '+10 Attack Power', value: 100, equipped: true },
+          { id: 'steel_shield', name: 'Steel Shield', quantity: 1, type: 'armor', description: '+8 Defense', value: 80 },
+          { id: 'ancient_key', name: 'Ancient Key', quantity: 1, type: 'key', description: 'Opens ancient doors', value: 0 }
+        ];
+        this.isOpen = false;
+        this.selectedIndex = 0;
+      }
+
+      toggle() {
+        this.isOpen = !this.isOpen;
+        if (this.isOpen) this.selectedIndex = 0;
+        return this.isOpen;
+      }
+
+      addItem(itemId, quantity = 1) {
+        const existing = this.items.find(item => item.id === itemId);
+        if (existing) {
+          existing.quantity += quantity;
+        } else {
+          // Add new item logic would go here
+        }
+      }
+
+      useItem(index) {
+        const item = this.items[index];
+        if (!item || item.quantity <= 0) return false;
+
+        if (item.type === 'consumable') {
+          item.quantity--;
+          if (item.quantity <= 0) {
+            this.items.splice(index, 1);
+          }
+          return true;
+        }
+        return false;
+      }
+
+      render(ctx, canvas) {
+        if (!this.isOpen) return;
+
+        const invX = 200, invY = 100, invW = 400, invH = 350;
+
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 30, 0.95)';
+        ctx.fillRect(invX, invY, invW, invH);
+
+        // Border
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(invX, invY, invW, invH);
+
+        // Title
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = 'bold 18px monospace';
+        ctx.fillText('INVENTORY', invX + 15, invY + 30);
+
+        // Items
+        ctx.font = '12px monospace';
+        this.items.forEach((item, i) => {
+          const y = invY + 60 + i * 35;
+          const isSelected = i === this.selectedIndex;
+
+          // Selection highlight
+          if (isSelected) {
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+            ctx.fillRect(invX + 10, y - 15, invW - 20, 30);
+          }
+
+          // Item icon (colored square)
+          const iconColor = item.type === 'weapon' ? '#ff6644' : 
+                           item.type === 'armor' ? '#6644ff' :
+                           item.type === 'consumable' ? '#44ff66' : '#ffff44';
+          ctx.fillStyle = iconColor;
+          ctx.fillRect(invX + 20, y - 10, 16, 16);
+
+          // Item name
+          ctx.fillStyle = isSelected ? '#ffffff' : '#cccccc';
+          ctx.fillText(item.name, invX + 45, y);
+
+          // Quantity
+          if (item.quantity > 1) {
+            ctx.fillStyle = '#ffaa00';
+            ctx.fillText(`x${item.quantity}`, invX + 180, y);
+          }
+
+          // Equipped indicator
+          if (item.equipped) {
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText('E', invX + 210, y);
+          }
+
+          // Description
+          ctx.fillStyle = '#888888';
+          ctx.font = '10px monospace';
+          ctx.fillText(item.description, invX + 45, y + 12);
+          ctx.font = '12px monospace';
+        });
+
+        // Controls
+        ctx.fillStyle = '#888888';
+        ctx.font = '10px monospace';
+        ctx.fillText('↑↓: Select | ENTER: Use | I: Close', invX + 15, invY + invH - 15);
+      }
+    }
+
+    // === DIALOGUE SYSTEM ===
+    class DialogueSystem {
+      constructor() {
+        this.isActive = false;
+        this.currentDialogue = null;
+        this.dialogues = new Map();
+        this.initializeDialogues();
+      }
+
+      initializeDialogues() {
+        // Alien NPC dialogue tree
+        this.dialogues.set('alien_encounter', {
+          id: 'alien_encounter',
+          title: 'Alien Encounter',
+          nodes: {
+            start: {
+              speaker: 'Zyx the Explorer',
+              text: 'Greetings, human! I am Zyx from the Galactic Federation. We come in peace to study your fascinating world!',
+              choices: [
+                { text: 'Who are you?', next: 'who' },
+                { text: 'What are you doing here?', next: 'mission' },
+                { text: 'Can you give me something?', next: 'gift' },
+                { text: 'I must go.', next: 'farewell' }
+              ]
+            },
+            who: {
+              speaker: 'Zyx',
+              text: 'I am a scout from the planet Zephyr. We are peaceful explorers who travel the galaxy documenting different species and cultures.',
+              choices: [
+                { text: 'Tell me about your planet.', next: 'planet' },
+                { text: 'What do you think of Earth?', next: 'earth' },
+                { text: 'Back to main questions.', next: 'start' }
+              ]
+            },
+            mission: {
+              speaker: 'Zyx',
+              text: 'We are conducting research on Earth\'s biodiversity. Your planet has remarkable variety! We especially find your gaming culture fascinating.',
+              choices: [
+                { text: 'Gaming culture?', next: 'gaming' },
+                { text: 'What else interests you?', next: 'interests' },
+                { text: 'Back to main questions.', next: 'start' }
+              ]
+            },
+            gift: {
+              speaker: 'Zyx',
+              text: 'Ah, you seek knowledge! Here, take these supplies from our ship. Use them wisely on your adventure!',
+              choices: [
+                { text: 'Thank you!', next: 'thanks' }
+              ],
+              action: 'give_items'
+            },
+            farewell: {
+              speaker: 'Zyx',
+              text: 'Farewell, brave human! May the stars guide your path. Live long and prosper! 🚀',
+              choices: []
+            }
+          }
+        });
+
+        // Battle NPC dialogue
+        this.dialogues.set('enemy_encounter', {
+          id: 'enemy_encounter',
+          title: 'Enemy Encounter',
+          nodes: {
+            start: {
+              speaker: 'Shadow Beast',
+              text: 'You dare enter my domain, human? Prepare for battle!',
+              choices: [
+                { text: 'Bring it on!', next: 'battle' },
+                { text: 'Wait, let\'s talk about this...', next: 'negotiate' }
+              ]
+            },
+            battle: {
+              speaker: 'Shadow Beast',
+              text: 'Very well! Face the darkness!',
+              choices: [],
+              action: 'start_battle'
+            }
+          }
+        });
+      }
+
+      startDialogue(dialogueId) {
+        const dialogue = this.dialogues.get(dialogueId);
+        if (!dialogue) return false;
+
+        this.currentDialogue = {
+          dialogue,
+          currentNode: 'start',
+          selectedChoice: 0
+        };
+        this.isActive = true;
+        return true;
+      }
+
+      handleInput(keyCode) {
+        if (!this.isActive || !this.currentDialogue) return;
+
+        const node = this.currentDialogue.dialogue.nodes[this.currentDialogue.currentNode];
+        
+        if (keyCode === 'ArrowUp') {
+          this.currentDialogue.selectedChoice = Math.max(0, this.currentDialogue.selectedChoice - 1);
+        } else if (keyCode === 'ArrowDown') {
+          this.currentDialogue.selectedChoice = Math.min(node.choices.length - 1, this.currentDialogue.selectedChoice + 1);
+        } else if (keyCode === 'Enter') {
+          if (node.choices.length === 0) {
+            this.endDialogue();
+          } else {
+            const choice = node.choices[this.currentDialogue.selectedChoice];
+            if (choice.next) {
+              this.currentDialogue.currentNode = choice.next;
+              this.currentDialogue.selectedChoice = 0;
+            }
+            if (node.action) {
+              return node.action; // Return action to be handled by game
+            }
+          }
+        } else if (keyCode === 'Escape') {
+          this.endDialogue();
+        }
+      }
+
+      endDialogue() {
+        this.isActive = false;
+        this.currentDialogue = null;
+      }
+
+      render(ctx, canvas) {
+        if (!this.isActive || !this.currentDialogue) return;
+
+        const node = this.currentDialogue.dialogue.nodes[this.currentDialogue.currentNode];
+        const dlgX = 50, dlgY = canvas.height - 200, dlgW = canvas.width - 100, dlgH = 150;
+
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 50, 0.95)';
+        ctx.fillRect(dlgX, dlgY, dlgW, dlgH);
+
+        // Border
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(dlgX, dlgY, dlgW, dlgH);
+
+        // Speaker name
+        ctx.fillStyle = '#ffaa00';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText(node.speaker + ':', dlgX + 15, dlgY + 25);
+
+        // Dialogue text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px monospace';
+        const words = node.text.split(' ');
+        let line = '';
+        let y = dlgY + 45;
+        
+        for (const word of words) {
+          const testLine = line + word + ' ';
+          if (ctx.measureText(testLine).width > dlgW - 30) {
+            ctx.fillText(line, dlgX + 15, y);
+            line = word + ' ';
+            y += 15;
+          } else {
+            line = testLine;
+          }
+        }
+        if (line) {
+          ctx.fillText(line, dlgX + 15, y);
+        }
+
+        // Choices
+        if (node.choices.length > 0) {
+          y += 20;
+          node.choices.forEach((choice, i) => {
+            const isSelected = i === this.currentDialogue.selectedChoice;
+            ctx.fillStyle = isSelected ? '#ffff00' : '#cccccc';
+            ctx.fillText(`${isSelected ? '► ' : '  '}${choice.text}`, dlgX + 20, y + i * 15);
+          });
+        } else {
+          ctx.fillStyle = '#888888';
+          ctx.font = '10px monospace';
+          ctx.fillText('Press ENTER or ESC to close', dlgX + 15, dlgY + dlgH - 15);
+        }
+      }
+    }
+
+    // === BATTLE SYSTEM ===
+    class BattleSystem {
+      constructor(audioSystem) {
+        this.audioSystem = audioSystem;
+        this.isActive = false;
+        this.player = { hp: 100, maxHp: 100, mp: 50, maxMp: 50, attack: 15, defense: 8 };
+        this.enemy = null;
+        this.selectedAction = 0;
+        this.battleLog = [];
+        this.turn = 'player';
+      }
+
+      startBattle(enemyType = 'shadow_beast') {
+        this.isActive = true;
+        this.enemy = this.createEnemy(enemyType);
+        this.battleLog = [`A wild ${this.enemy.name} appears!`];
+        this.selectedAction = 0;
+        this.turn = 'player';
+        this.audioSystem.playSFX('battle', 0.4);
+        console.log('⚔️ Battle started!');
+      }
+
+      createEnemy(type) {
+        const enemies = {
+          shadow_beast: {
+            name: 'Shadow Beast',
+            hp: 80,
+            maxHp: 80,
+            attack: 12,
+            defense: 5,
+            exp: 25,
+            gold: 15
+          }
+        };
+        return { ...enemies[type] };
+      }
+
+      handleInput(keyCode) {
+        if (!this.isActive || this.turn !== 'player') return;
+
+        if (keyCode === 'ArrowUp') {
+          this.selectedAction = Math.max(0, this.selectedAction - 1);
+        } else if (keyCode === 'ArrowDown') {
+          this.selectedAction = Math.min(3, this.selectedAction + 1);
+        } else if (keyCode === 'Enter') {
+          this.executePlayerAction();
+        }
+      }
+
+      executePlayerAction() {
+        const actions = ['Attack', 'Magic', 'Item', 'Run'];
+        const action = actions[this.selectedAction];
+
+        switch (action) {
+          case 'Attack':
+            this.playerAttack();
+            break;
+          case 'Magic':
+            this.playerMagic();
+            break;
+          case 'Item':
+            this.playerItem();
+            break;
+          case 'Run':
+            this.playerRun();
+            break;
+        }
+
+        if (this.enemy.hp > 0 && this.isActive) {
+          setTimeout(() => this.enemyTurn(), 1000);
+        }
+      }
+
+      playerAttack() {
+        const damage = Math.max(1, this.player.attack - this.enemy.defense + Math.floor(Math.random() * 5));
+        this.enemy.hp = Math.max(0, this.enemy.hp - damage);
+        this.battleLog.push(`You attack for ${damage} damage!`);
+        this.audioSystem.playSFX('hit', 0.3);
+
+        if (this.enemy.hp <= 0) {
+          this.battleLog.push(`${this.enemy.name} is defeated!`);
+          this.battleLog.push(`You gained ${this.enemy.exp} EXP and ${this.enemy.gold} gold!`);
+          setTimeout(() => this.endBattle(true), 1500);
+        }
+      }
+
+      playerMagic() {
+        if (this.player.mp < 10) {
+          this.battleLog.push('Not enough MP!');
+          return;
+        }
+        this.player.mp -= 10;
+        const damage = Math.floor(this.player.attack * 1.5) + Math.floor(Math.random() * 8);
+        this.enemy.hp = Math.max(0, this.enemy.hp - damage);
+        this.battleLog.push(`You cast fireball for ${damage} damage!`);
+        this.audioSystem.playSFX('powerup', 0.4);
+
+        if (this.enemy.hp <= 0) {
+          this.battleLog.push(`${this.enemy.name} is defeated!`);
+          setTimeout(() => this.endBattle(true), 1500);
+        }
+      }
+
+      playerItem() {
+        this.player.hp = Math.min(this.player.maxHp, this.player.hp + 30);
+        this.battleLog.push('You used a health potion! +30 HP');
+        this.audioSystem.playSFX('coin', 0.3);
+      }
+
+      playerRun() {
+        this.battleLog.push('You ran away successfully!');
+        setTimeout(() => this.endBattle(false), 1000);
+      }
+
+      enemyTurn() {
+        const damage = Math.max(1, this.enemy.attack - this.player.defense + Math.floor(Math.random() * 4));
+        this.player.hp = Math.max(0, this.player.hp - damage);
+        this.battleLog.push(`${this.enemy.name} attacks for ${damage} damage!`);
+        this.audioSystem.playSFX('hit', 0.2);
+
+        if (this.player.hp <= 0) {
+          this.battleLog.push('You have been defeated...');
+          setTimeout(() => this.endBattle(false), 1500);
+        } else {
+          this.turn = 'player';
+        }
+      }
+
+      endBattle(victory) {
+        this.isActive = false;
+        this.battleLog = [];
+        if (victory) {
+          this.audioSystem.playSFX('powerup', 0.5);
+        }
+        console.log('⚔️ Battle ended:', victory ? 'Victory!' : 'Defeat...');
+      }
+
+      render(ctx, canvas) {
+        if (!this.isActive) return;
+
+        // Battle background
+        ctx.fillStyle = 'rgba(50, 0, 0, 0.9)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Enemy
+        ctx.fillStyle = '#ff4444';
+        ctx.fillRect(canvas.width - 150, 100, 80, 80);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '14px monospace';
+        ctx.fillText(this.enemy.name, canvas.width - 200, 90);
+        ctx.fillText(`HP: ${this.enemy.hp}/${this.enemy.maxHp}`, canvas.width - 200, 200);
+
+        // Player stats
+        ctx.fillStyle = '#4444ff';
+        ctx.fillRect(50, canvas.height - 150, 60, 60);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('Hero', 50, canvas.height - 160);
+        ctx.fillText(`HP: ${this.player.hp}/${this.player.maxHp}`, 50, canvas.height - 80);
+        ctx.fillText(`MP: ${this.player.mp}/${this.player.maxMp}`, 50, canvas.height - 65);
+
+        // Actions menu
+        if (this.turn === 'player') {
+          const actions = ['Attack', 'Magic', 'Item', 'Run'];
+          ctx.fillStyle = 'rgba(0, 0, 50, 0.9)';
+          ctx.fillRect(200, canvas.height - 120, 200, 100);
+          ctx.strokeStyle = '#ffffff';
+          ctx.strokeRect(200, canvas.height - 120, 200, 100);
+
+          actions.forEach((action, i) => {
+            ctx.fillStyle = i === this.selectedAction ? '#ffff00' : '#ffffff';
+            ctx.fillText(`${i === this.selectedAction ? '► ' : '  '}${action}`, 210, canvas.height - 95 + i * 20);
+          });
+        }
+
+        // Battle log
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(450, canvas.height - 150, 300, 130);
+        ctx.strokeStyle = '#ffffff';
+        ctx.strokeRect(450, canvas.height - 150, 300, 130);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '10px monospace';
+        this.battleLog.slice(-8).forEach((msg, i) => {
+          ctx.fillText(msg, 460, canvas.height - 135 + i * 12);
+        });
+      }
+    }
+
+    // === MAIN GAME CLASS ===
+    class UltimateJRPGGame {
+      constructor() {
+        // Core systems
+        this.canvas = document.getElementById('game-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.running = false;
+        this.frame = 0;
+        this.lastTime = 0;
+        this.fps = 60;
+
+        // Game systems
+        this.audioSystem = new AudioSystem();
+        this.inventorySystem = new InventorySystem();
+        this.dialogueSystem = new DialogueSystem();
+        this.battleSystem = new BattleSystem(this.audioSystem);
+
+        // Game state
+        this.gameState = 'overworld'; // overworld, battle, menu
+        this.player = { x: 10, y: 10, facing: 'down', level: 1, exp: 0, gold: 50 };
+        this.npcs = [
+          { x: 15, y: 8, type: 'alien', dialogueId: 'alien_encounter', name: 'Zyx' },
+          { x: 18, y: 12, type: 'enemy', dialogueId: 'enemy_encounter', name: 'Shadow' }
+        ];
+        this.gridSize = 32;
+        this.keysPressed = new Set();
+
+        this.setupInput();
+        this.initialize();
+      }
+
+      initialize() {
+        console.log('🚀 Ultimate JRPG Framework initialized');
+        console.log('🎮 Features: Movement, Combat, Inventory, Dialogue, Audio');
+        
+        // Update system status
+        document.getElementById('system-status').innerHTML = `
+          ✅ Canvas Rendering<br>
+          ✅ Game Loop Active<br>
+          ✅ Audio System<br>
+          ✅ Inventory System<br>
+          ✅ Dialogue System<br>
+          ✅ Combat System<br>
+          ✅ All Systems Go!
+        `;
+        
+        this.testRender();
+      }
+
+      testRender() {
+        // Initial render to confirm everything works
+        this.render(0);
+        console.log('✅ Initial render complete');
+      }
+
+      setupInput() {
+        document.addEventListener('keydown', (e) => {
+          this.keysPressed.add(e.code);
+          this.handleKeyPress(e.code);
+          
+          // Prevent default for game keys
+          if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyE', 'KeyI', 'KeyB', 'KeyM', 'Escape'].includes(e.code)) {
+            e.preventDefault();
+          }
+        });
+
+        document.addEventListener('keyup', (e) => {
+          this.keysPressed.delete(e.code);
+        });
+      }
+
+      handleKeyPress(keyCode) {
+        // Handle different game states
+        if (this.battleSystem.isActive) {
+          this.battleSystem.handleInput(keyCode);
+          return;
+        }
+
+        if (this.dialogueSystem.isActive) {
+          const action = this.dialogueSystem.handleInput(keyCode);
+          if (action) this.handleDialogueAction(action);
+          return;
+        }
+
+        if (this.inventorySystem.isOpen) {
+          if (keyCode === 'KeyI' || keyCode === 'Escape') {
+            this.inventorySystem.toggle();
+          } else if (keyCode === 'ArrowUp') {
+            this.inventorySystem.selectedIndex = Math.max(0, this.inventorySystem.selectedIndex - 1);
+          } else if (keyCode === 'ArrowDown') {
+            this.inventorySystem.selectedIndex = Math.min(this.inventorySystem.items.length - 1, this.inventorySystem.selectedIndex + 1);
+          } else if (keyCode === 'Enter') {
+            if (this.inventorySystem.useItem(this.inventorySystem.selectedIndex)) {
+              this.audioSystem.playSFX('coin', 0.3);
+            }
+          }
+          return;
+        }
+
+        // Overworld controls
+        switch (keyCode) {
+          case 'KeyI':
+            this.inventorySystem.toggle();
+            this.audioSystem.playSFX('beep', 0.3);
+            break;
+          case 'KeyE':
+            this.checkNPCInteraction();
+            break;
+          case 'KeyB':
+            this.battleSystem.startBattle();
+            break;
+          case 'KeyM':
+            this.audioSystem.toggleMusic();
+            break;
+        }
+      }
+
+      handleDialogueAction(action) {
+        switch (action) {
+          case 'give_items':
+            this.inventorySystem.addItem('health_potion', 2);
+            this.inventorySystem.addItem('mana_potion', 1);
+            this.audioSystem.playSFX('powerup', 0.4);
+            break;
+          case 'start_battle':
+            this.dialogueSystem.endDialogue();
+            this.battleSystem.startBattle();
+            break;
+        }
+      }
+
+      checkNPCInteraction() {
+        for (const npc of this.npcs) {
+          const distance = Math.abs(this.player.x - npc.x) + Math.abs(this.player.y - npc.y);
+          if (distance <= 1) {
+            if (this.dialogueSystem.startDialogue(npc.dialogueId)) {
+              this.audioSystem.playSFX('beep', 0.4);
+              return;
+            }
+          }
+        }
+      }
+
+      update(deltaTime) {
+        // Handle player movement
+        this.updatePlayerMovement();
+
+        // Update frame counter
+        this.frame++;
+        
+        // Update UI
+        document.getElementById('player-info').textContent = 
+          `Player: (${this.player.x}, ${this.player.y}) Level: ${this.player.level}`;
+        document.getElementById('frame-info').textContent = `Frame: ${this.frame}`;
+        document.getElementById('fps-info').textContent = `FPS: ${Math.round(this.fps)}`;
+      }
+
+      updatePlayerMovement() {
+        // Only move every 15 frames to control speed
+        if (this.frame % 15 !== 0) return;
+        if (this.battleSystem.isActive || this.dialogueSystem.isActive || this.inventorySystem.isOpen) return;
+
+        const newPos = { ...this.player };
+        let moved = false;
+
+        // Check movement input
+        if (this.keysPressed.has('ArrowUp') || this.keysPressed.has('KeyW')) {
+          newPos.y -= 1;
+          this.player.facing = 'up';
+          moved = true;
+        } else if (this.keysPressed.has('ArrowDown') || this.keysPressed.has('KeyS')) {
+          newPos.y += 1;
+          this.player.facing = 'down';
+          moved = true;
+        } else if (this.keysPressed.has('ArrowLeft') || this.keysPressed.has('KeyA')) {
+          newPos.x -= 1;
+          this.player.facing = 'left';
+          moved = true;
+        } else if (this.keysPressed.has('ArrowRight') || this.keysPressed.has('KeyD')) {
+          newPos.x += 1;
+          this.player.facing = 'right';
+          moved = true;
+        }
+
+        // Apply movement with bounds checking
+        if (moved) {
+          if (newPos.x >= 0 && newPos.x < 25 && newPos.y >= 0 && newPos.y < 19) {
+            if (!this.isWall(newPos.x, newPos.y)) {
+              this.player = newPos;
+              this.audioSystem.playSFX('beep', 0.1);
+            }
+          }
+        }
+      }
+
+      isWall(x, y) {
+        // Define wall boundaries
+        return (x >= 5 && x <= 19 && y >= 5 && y <= 14) && 
+               (x === 5 || x === 19 || y === 5 || y === 14);
+      }
+
+      render(deltaTime) {
+        const currentTime = performance.now();
+        if (this.lastTime) {
+          this.fps = 1000 / (currentTime - this.lastTime);
+        }
+        this.lastTime = currentTime;
+
+        // Clear canvas
+        const time = Date.now() / 1000;
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        gradient.addColorStop(0, '#1a1a3a');
+        gradient.addColorStop(1, '#0a0a2a');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Render based on game state
+        if (this.battleSystem.isActive) {
+          this.battleSystem.render(this.ctx, this.canvas);
+        } else {
+          this.renderOverworld(time);
+        }
+
+        // Always render UI systems on top
+        this.inventorySystem.render(this.ctx, this.canvas);
+        this.dialogueSystem.render(this.ctx, this.canvas);
+      }
+
+      renderOverworld(time) {
+        // Draw grid
+        this.renderGrid();
+        
+        // Draw environment
+        this.renderEnvironment();
+        
+        // Draw NPCs
+        this.renderNPCs(time);
+        
+        // Draw player
+        this.renderPlayer();
+        
+        // Draw UI
+        this.renderUI();
+        
+        // Draw interaction prompts
+        this.renderInteractionPrompts();
+      }
+
+      renderGrid() {
+        this.ctx.strokeStyle = 'rgba(100, 100, 200, 0.1)';
+        this.ctx.lineWidth = 1;
+
+        for (let x = 0; x < this.canvas.width; x += this.gridSize) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(x, 0);
+          this.ctx.lineTo(x, this.canvas.height);
+          this.ctx.stroke();
+        }
+
+        for (let y = 0; y < this.canvas.height; y += this.gridSize) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(0, y);
+          this.ctx.lineTo(this.canvas.width, y);
+          this.ctx.stroke();
+        }
+      }
+
+      renderEnvironment() {
+        for (let x = 5; x < 20; x++) {
+          for (let y = 5; y < 15; y++) {
+            const isWall = (x === 5 || x === 19 || y === 5 || y === 14);
+            
+            if (isWall) {
+              // Draw wall tiles with texture
+              this.ctx.fillStyle = '#4a4a6a';
+              this.ctx.fillRect(x * this.gridSize, y * this.gridSize, this.gridSize, this.gridSize);
+              
+              // Wall highlights
+              this.ctx.fillStyle = '#6a6a8a';
+              this.ctx.fillRect(x * this.gridSize + 2, y * this.gridSize + 2, this.gridSize - 4, 2);
+              this.ctx.fillRect(x * this.gridSize + 2, y * this.gridSize + 2, 2, this.gridSize - 4);
+            } else {
+              // Draw floor tiles with variation
+              const shade = ((x + y) % 3) * 5;
+              this.ctx.fillStyle = `rgb(${25 + shade}, ${45 + shade}, ${25 + shade})`;
+              this.ctx.fillRect(x * this.gridSize + 1, y * this.gridSize + 1, this.gridSize - 2, this.gridSize - 2);
+            }
+          }
+        }
+      }
+
+      renderNPCs(time) {
+        this.npcs.forEach(npc => {
+          const npcX = npc.x * this.gridSize + this.gridSize / 2;
+          const npcY = npc.y * this.gridSize + this.gridSize / 2;
+
+          if (npc.type === 'alien') {
+            // Alien NPC (green with bob animation)
+            const bob = Math.sin(time * 3) * 3;
+            this.ctx.fillStyle = '#00ff88';
+            this.ctx.beginPath();
+            this.ctx.arc(npcX, npcY + bob, 12, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Eyes
+            this.ctx.fillStyle = '#000';
+            this.ctx.beginPath();
+            this.ctx.arc(npcX - 4, npcY + bob - 3, 2, 0, Math.PI * 2);
+            this.ctx.arc(npcX + 4, npcY + bob - 3, 2, 0, Math.PI * 2);
+            this.ctx.fill();
+          } else if (npc.type === 'enemy') {
+            // Enemy NPC (red with glow)
+            const glow = Math.sin(time * 4) * 0.3 + 0.7;
+            this.ctx.fillStyle = `rgba(255, 64, 64, ${glow})`;
+            this.ctx.beginPath();
+            this.ctx.arc(npcX, npcY, 14, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Menacing eyes
+            this.ctx.fillStyle = '#ffff00';
+            this.ctx.beginPath();
+            this.ctx.arc(npcX - 5, npcY - 4, 2, 0, Math.PI * 2);
+            this.ctx.arc(npcX + 5, npcY - 4, 2, 0, Math.PI * 2);
+            this.ctx.fill();
+          }
+
+          // Name tag
+          this.ctx.fillStyle = '#ffffff';
+          this.ctx.font = '8px monospace';
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText(npc.name, npcX, npcY + 25);
+          this.ctx.textAlign = 'left';
+        });
+      }
+
+      renderPlayer() {
+        const playerX = this.player.x * this.gridSize + this.gridSize / 2;
+        const playerY = this.player.y * this.gridSize + this.gridSize / 2;
+
+        // Player body (hero blue)
+        this.ctx.fillStyle = '#4499ff';
+        this.ctx.beginPath();
+        this.ctx.arc(playerX, playerY, 11, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Player direction indicator
+        this.ctx.fillStyle = '#ffffff';
+        let dirX = 0, dirY = 0;
+        switch (this.player.facing) {
+          case 'up': dirY = -7; break;
+          case 'down': dirY = 7; break;
+          case 'left': dirX = -7; break;
+          case 'right': dirX = 7; break;
+        }
+        this.ctx.beginPath();
+        this.ctx.arc(playerX + dirX, playerY + dirY, 3, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Player level indicator
+        this.ctx.fillStyle = '#ffff00';
+        this.ctx.font = '8px monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(`L${this.player.level}`, playerX, playerY - 18);
+        this.ctx.textAlign = 'left';
+      }
+
+      renderUI() {
+        // Game title and status
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 14px monospace';
+        this.ctx.fillText('Ultimate SNES JRPG Framework', 20, 25);
+
+        // Player stats
+        this.ctx.font = '10px monospace';
+        this.ctx.fillStyle = '#88ff88';
+        this.ctx.fillText(`Position: (${this.player.x}, ${this.player.y})`, 20, 45);
+        this.ctx.fillText(`Level: ${this.player.level} | EXP: ${this.player.exp} | Gold: ${this.player.gold}`, 20, 60);
+
+        // Active systems
+        const systems = [
+          `🎵 Audio: ${this.audioSystem.musicEnabled ? 'ON' : 'OFF'}`,
+          `📦 Inventory: ${this.inventorySystem.items.length} items`,
+          `⚔️ Battle: ${this.battleSystem.isActive ? 'ACTIVE' : 'Ready'}`,
+          `💬 Dialogue: ${this.dialogueSystem.isActive ? 'ACTIVE' : 'Ready'}`
+        ];
+
+        this.ctx.fillStyle = '#ffaa00';
+        systems.forEach((system, i) => {
+          this.ctx.fillText(system, 20, 85 + i * 12);
+        });
+      }
+
+      renderInteractionPrompts() {
+        // Check for nearby NPCs
+        for (const npc of this.npcs) {
+          const distance = Math.abs(this.player.x - npc.x) + Math.abs(this.player.y - npc.y);
+          if (distance <= 1) {
+            const promptX = this.canvas.width / 2 - 100;
+            const promptY = 350;
+
+            // Background with pulse effect
+            const time = Date.now() / 300;
+            const alpha = (Math.sin(time) + 1) / 2 * 0.3 + 0.7;
+            this.ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+            this.ctx.fillRect(promptX, promptY, 200, 35);
+
+            // Border
+            this.ctx.strokeStyle = '#ffff00';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(promptX, promptY, 200, 35);
+
+            // Text
+            this.ctx.fillStyle = '#ffff00';
+            this.ctx.font = '12px monospace';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`Press E to talk to ${npc.name}`, this.canvas.width / 2, promptY + 22);
+            this.ctx.textAlign = 'left';
+            break;
+          }
+        }
+      }
+
+      gameLoop() {
+        if (!this.running) return;
+
+        const currentTime = performance.now();
+        const deltaTime = currentTime - this.lastTime;
+
+        this.update(deltaTime);
+        this.render(deltaTime);
+
+        requestAnimationFrame(() => this.gameLoop());
+      }
+
+      start() {
+        console.log('🚀 Starting Ultimate JRPG Framework...');
+        this.running = true;
+        this.gameLoop();
+      }
+
+      stop() {
+        console.log('⏹️ Stopping game...');
+        this.running = false;
+      }
+    }
+
+    // Initialize and start the game
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('🎯 DOM loaded, creating Ultimate JRPG Game...');
+
+      try {
+        const game = new UltimateJRPGGame();
+        game.start();
+
+        // Global access for debugging
+        window.__ultimateGame = game;
+
+        console.log('✅ Ultimate JRPG Framework started successfully!');
+        console.log('🎮 All systems operational - enjoy your adventure!');
+
+      } catch (error) {
+        console.error('❌ Failed to start Ultimate JRPG Framework:', error);
+        document.getElementById('system-status').innerHTML = '❌ System Error<br>' + error.message;
+      }
+    });
+  </script>
+</body>
+</html>

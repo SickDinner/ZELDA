@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergency Test</title>
+  <style>
+    body { 
+      background: #222; 
+      display: flex; 
+      flex-direction: column;
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      font-family: monospace; 
+      color: white;
+    }
+    #game-canvas { 
+      border: 2px solid #666; 
+      background: #000; 
+      margin: 10px;
+    }
+    .status {
+      margin: 5px;
+      padding: 5px 10px;
+      background: #333;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="status">🚨 Emergency Test Mode 🚨</div>
+  <div class="status" id="test-status">Testing canvas...</div>
+  <canvas id="game-canvas" width="800" height="600"></canvas>
+  <div class="status">If you see colored shapes above, your browser supports canvas.</div>
+  <div class="status">Press F12 → Console to see detailed logs</div>
+  
+  <script>
+    console.log('🚨 Emergency test starting...');
+    
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const statusEl = document.getElementById('test-status');
+    
+    if (!ctx) {
+      console.error('❌ Canvas context failed');
+      statusEl.textContent = '❌ Canvas context failed - your browser may not support HTML5 Canvas';
+      statusEl.style.color = '#ff4444';
+    } else {
+      console.log('✅ Canvas context OK');
+      statusEl.textContent = '✅ Canvas works!';
+      statusEl.style.color = '#44ff44';
+      
+      try {
+        // Test 1: Basic shapes
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.fillStyle = '#4499ff';
+        ctx.fillRect(100, 100, 64, 64);
+        
+        ctx.fillStyle = '#ff6644';
+        ctx.fillRect(200, 150, 64, 64);
+        
+        ctx.fillStyle = '#44ff88';
+        ctx.fillRect(300, 200, 64, 64);
+        
+        // Test 2: Text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '24px monospace';
+        ctx.fillText('Emergency Test - Canvas Working!', 50, 50);
+        
+        ctx.font = '14px monospace';
+        ctx.fillText('Blue, Red, Green squares should be visible', 50, 320);
+        ctx.fillText('If you see this text, text rendering works', 50, 340);
+        
+        // Test 3: Animation
+        let frame = 0;
+        function animate() {
+          // Moving circle
+          const x = 400 + Math.sin(Date.now() / 1000) * 100;
+          const y = 350 + Math.cos(Date.now() / 1000) * 50;
+          
+          // Clear previous circle area
+          ctx.fillStyle = '#1a1a2e';
+          ctx.fillRect(250, 250, 300, 200);
+          
+          // Draw moving circle
+          ctx.fillStyle = '#ffff00';
+          ctx.beginPath();
+          ctx.arc(x, y, 20, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Frame counter
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '12px monospace';
+          ctx.fillText(`Frame: ${frame++}`, 20, canvas.height - 20);
+          
+          requestAnimationFrame(animate);
+        }
+        
+        animate();
+        console.log('✅ Animation started');
+        
+      } catch (error) {
+        console.error('❌ Canvas rendering failed:', error);
+        statusEl.textContent = '❌ Canvas rendering failed: ' + error.message;
+        statusEl.style.color = '#ff4444';
+      }
+    }
+    
+    // Test main script loading (optional)
+    setTimeout(() => {
+      console.log('🔍 Testing main script import...');
+      try {
+        import('/src/main.ts').then(() => {
+          console.log('✅ Main script imported successfully (but may still have runtime errors)');
+        }).catch((error) => {
+          console.error('❌ Main script import failed:', error);
+          console.log('This suggests a TypeScript compilation or module loading issue');
+        });
+      } catch (error) {
+        console.error('❌ Import test failed:', error);
+      }
+    }, 2000);
+  </script>
+</body>
+</html>
